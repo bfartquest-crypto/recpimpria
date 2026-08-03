@@ -466,7 +466,9 @@ async function buscarPorDNI(dni) {
   try {
     // Enviamos la consulta a Google Apps Script para saltar el bloqueo CORS
     const url = `${CREDENTIALS.GOOGLE_SHEETS_WEBAPP_URL}?action=buscarDni&dni=${dni}&token=${encodeURIComponent(CREDENTIALS.APIS_PERU_TOKEN)}`;
-    const respuesta = await fetch(url);
+    
+    // redirect: 'follow' gestiona la redirección nativa de Apps Script
+    const respuesta = await fetch(url, { redirect: 'follow' });
     const resultado = await respuesta.json();
 
     if (resultado.success && resultado.nombre) {

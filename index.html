@@ -443,7 +443,49 @@ const CREDENTIALS = {
   GOOGLE_SHEETS_WEBAPP_URL: "https://script.google.com/macros/s/AKfycbxO7ITRg22se1vgisQAoFu2f14h6OTvGeXtEiibol1lQPwL56tNT-Dv0JUL9skYG7JwZQ/exec", // pegue aquí la URL /exec de su Apps Script Web App (ver nota arriba)
   PRECIO_COCHERA_EXTRA: 10
 };
+// Esta es la función que busca el DNI automáticamente
+async function buscarPorDNI(dni) {
+  // 1. Verificamos que hayas puesto tu token en el objeto CREDENTIALS
+  if (!CREDENTIALS.APIS_PERU_TOKEN || CREDENTIALS.APIS_PERU_TOKEN === "TU_TOKEN_AQUI") {
+    alert("Falta ingresar tu Token de APIs Perú en el código CREDENTIALS.");
+    return;
+  }
 
+  // 2. Verificamos que el DNI tenga 8 dígitos
+  if (dni.length !== 8) {
+    alert("El DNI debe tener 8 números.");
+    return;
+  }
+
+  try {
+    // 3. Consultamos a APIs Perú pasando el DNI y el Token
+    const respuesta = await fetch(`${CREDENTIALS.APIS_PERU_DNI_ENDPOINT}${dni}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${CREDENTIALS.APIS_PERU_TOKEN}`
+      }
+    });
+
+    const resultado = await respuesta.json();
+
+    // 4. Si la consulta fue exitosa (DNI encontrado en RENIEC)
+    if (resultado.success) {
+      // Juntamos nombres y apellidos
+      const nombreCompleto = `${resultado.data.nombres} ${resultado.data.apellidoPaterno} ${resultado.data.apellidoMaterno}`;
+      
+      // Buscamos la cajita de texto donde va el nombre y le asignamos el valor
+      document.getElementById('inputNombreCliente').value = nombreCompleto;
+      
+      alert("¡Cliente encontrado: " + nombreCompleto + "!");
+    } else {
+      alert("No se encontró ninguna persona con ese DNI.");
+    }
+  } catch (error) {
+    console.error("Error al conectar con APIs Perú:", error);
+    alert("Hubo un error de conexión al buscar el DNI.");
+  }
+}
 /* =========================================================================
    DATOS DEL HOSTAL (5 pisos)
    ========================================================================= */

@@ -442,12 +442,12 @@ label{display:block;font-size:11.5px;letter-spacing:.04em;text-transform:upperca
    ========================================================================= */
 const CREDENTIALS = {
   APIS_PERU_TOKEN: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImJydW5vY2hvcXVlMjAwNEBnbWFpbC5jb20ifQ.kIEGzq09BeeiYgdDmg73-AnQahsgT-EsSxmw6XxQ2rQ",
-  APIS_PERU_DNI_ENDPOINT: "https://apisperu.com/api/dni/", // O https://apiperu.dev/api/dni/ según tu servidor activo
+  APIS_PERU_DNI_ENDPOINT: "https://dniruc.apisperu.com/api/v1/dni/", // Endpoint exacto según la documentación
   GOOGLE_SHEETS_WEBAPP_URL: "https://script.google.com/macros/s/AKfycbxO7ITRg22se1vgisQAoFu2f14h6OTvGeXtEiibol1lQPwL56tNT-Dv0JUL9skYG7JwZQ/exec",
   PRECIO_COCHERA_EXTRA: 10
 };
 
-// Función para consultar DNI según la doc de APISPERU
+// Función para consultar DNI
 async function buscarPorDNI(dni) {
   if (!CREDENTIALS.APIS_PERU_TOKEN) {
     showToast("Falta configurar el Token de APIs Perú.", "err");
@@ -465,7 +465,7 @@ async function buscarPorDNI(dni) {
   if (shimmer) shimmer.classList.remove('hidden');
 
   try {
-    // Petición GET directa agregando el número al final de la URL
+    // Petición GET al endpoint dniruc.apisperu.com/api/v1/dni/{dni}
     const url = `${CREDENTIALS.APIS_PERU_DNI_ENDPOINT}${dni}`;
     const respuesta = await fetch(url, {
       method: 'GET',
@@ -481,7 +481,7 @@ async function buscarPorDNI(dni) {
 
     const resultado = await respuesta.json();
 
-    // APISPERU puede devolver 'data' o las propiedades directamente en la raíz
+    // dniruc.apisperu.com suele devolver el objeto directamente o dentro de 'data'
     const data = resultado.data || resultado;
     const nombres = data.nombres || data.nombre || '';
     const apPat = data.apellidoPaterno || '';
@@ -492,11 +492,11 @@ async function buscarPorDNI(dni) {
       if (nombreInput) nombreInput.value = nombreCompleto;
       showToast("¡Cliente encontrado: " + nombreCompleto + "!", "ok");
     } else {
-      showToast("No se encontraron nombres asociados a ese DNI.", "err");
+      showToast("No se encontraron nombres para este DNI.", "err");
     }
   } catch (error) {
     console.error("Error al conectar con APIs Perú:", error);
-    showToast("Error de conexión al consultar DNI. Revisa la consola (F12).", "err");
+    showToast("Error de conexión al consultar DNI.", "err");
   } finally {
     if (shimmer) shimmer.classList.add('hidden');
   }

@@ -440,6 +440,9 @@ label{display:block;font-size:11.5px;letter-spacing:.04em;text-transform:upperca
 /* =========================================================================
    CREDENCIALES / CONFIGURACIÓN
    ========================================================================= */
+/* =========================================================================
+   CREDENCIALES / CONFIGURACIÓN
+   ========================================================================= */
 const CREDENTIALS = {
   APIS_PERU_TOKEN: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImJydW5vY2hvcXVlMjAwNEBnbWFpbC5jb20ifQ.kIEGzq09BeeiYgdDmg73-AnQahsgT-EsSxmw6XxQ2rQ",
   GOOGLE_SHEETS_WEBAPP_URL: "https://script.google.com/macros/s/AKfycbykbwhYT9psIUGHmyPAe5hCSf4sCw4STDl-mJj7KNricswbgOoCeabCY-z_PMHW8kFyRw/exec",
@@ -467,8 +470,12 @@ async function buscarPorDNI(dni) {
     // Enviamos la consulta a Google Apps Script para saltar el bloqueo CORS
     const url = `${CREDENTIALS.GOOGLE_SHEETS_WEBAPP_URL}?action=buscarDni&dni=${dni}&token=${encodeURIComponent(CREDENTIALS.APIS_PERU_TOKEN)}`;
     
-    // redirect: 'follow' gestiona la redirección nativa de Apps Script
-    const respuesta = await fetch(url, { redirect: 'follow' });
+    // Petición GET explícita con manejo de redirección
+    const respuesta = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow'
+    });
+
     const resultado = await respuesta.json();
 
     if (resultado.success && resultado.nombre) {

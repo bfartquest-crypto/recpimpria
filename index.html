@@ -442,20 +442,19 @@ label{display:block;font-size:11.5px;letter-spacing:.04em;text-transform:upperca
    ========================================================================= */
 const CREDENTIALS = {
   APIS_PERU_TOKEN: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImJydW5vY2hvcXVlMjAwNEBnbWFpbC5jb20ifQ.kIEGzq09BeeiYgdDmg73-AnQahsgT-EsSxmw6XxQ2rQ",
-  APIS_PERU_DNI_ENDPOINT: "https://dniruc.apisperu.com/api/v1/dni", // URL según Swagger oficial
   GOOGLE_SHEETS_WEBAPP_URL: "https://script.google.com/macros/s/AKfycbxO7ITRg22se1vgisQAoFu2f14h6OTvGeXtEiibol1lQPwL56tNT-Dv0JUL9skYG7JwZQ/exec",
   PRECIO_COCHERA_EXTRA: 10
 };
 
-// Función de consulta GET estricta según Swagger
+// Función que consulta a través de Google Apps Script (Bypass CORS)
 async function buscarPorDNI(dni) {
-  if (!CREDENTIALS.APIS_PERU_TOKEN) {
-    showToast("Falta configurar el Token de APIs Perú.", "err");
+  if (dni.length !== 8) {
+    showToast("El DNI debe tener 8 números.", "err");
     return;
   }
 
-  if (dni.length !== 8) {
-    showToast("El DNI debe tener 8 números.", "err");
+  if (!CREDENTIALS.GOOGLE_SHEETS_WEBAPP_URL) {
+    showToast("Falta configurar la URL de Apps Script.", "err");
     return;
   }
 
@@ -465,53 +464,24 @@ async function buscarPorDNI(dni) {
   if (shimmer) shimmer.classList.remove('hidden');
 
   try {
-    // Genera exactamente: https://dniruc.apisperu.com/api/v1/dni/71734921
-    const url = `${CREDENTIALS.APIS_PERU_DNI_ENDPOINT}/${dni}`;
-    
-    const respuesta = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${CREDENTIALS.APIS_PERU_TOKEN}`
-      }
-    });
-
-    if (!respuesta.ok) {
-      throw new Error(`Error HTTP: ${respuesta.status}`);
-    }
-
+    // Enviamos la consulta a Google Apps Script para saltar el bloqueo CORS
+    const url = `${CREDENTIALS.GOOGLE_SHEETS_WEBAPP_URL}?action=buscarDni&dni=${dni}&token=${encodeURIComponent(CREDENTIALS.APIS_PERU_TOKEN)}`;
+    const respuesta = await fetch(url);
     const resultado = await respuesta.json();
 
-    // Estructura de respuesta de APIs Perú
-    const data = resultado.data || resultado;
-    const nombres = data.nombres || data.nombre || '';
-    const apPat = data.apellidoPaterno || '';
-    const apMat = data.apellidoMaterno || '';
-    const nombreCompleto = [nombres, apPat, apMat].filter(Boolean).join(' ').trim();
-
-    if (nombreCompleto) {
-      if (nombreInput) nombreInput.value = nombreCompleto;
-      showToast("¡Cliente encontrado: " + nombreCompleto + "!", "ok");
+    if (resultado.success && resultado.nombre) {
+      if (nombreInput) nombreInput.value = resultado.nombre;
+      showToast("¡Cliente encontrado: " + resultado.nombre + "!", "ok");
     } else {
-      showToast("No se encontraron nombres para este DNI.", "err");
+      showToast(resultado.message || "No se encontró información para este DNI.", "err");
     }
   } catch (error) {
-    console.error("Error al conectar con APIs Perú:", error);
+    console.error("Error al conectar con el servidor:", error);
     showToast("No se pudo consultar el DNI automáticamente.", "err");
   } finally {
     if (shimmer) shimmer.classList.add('hidden');
   }
 }
-
-/* ---- Búsqueda Express al octavo dígito ---- */
-document.addEventListener('input', function(e){
-  if(e.target && e.target.id === 'ciDni'){
-    const val = e.target.value.replace(/\D/g, '');
-    if(val.length === 8){ 
-      buscarPorDNI(val); 
-    }
-  }
-});
 
 /* ---- Búsqueda Express al octavo dígito ---- */
 document.addEventListener('input', function(e){

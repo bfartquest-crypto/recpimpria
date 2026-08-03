@@ -437,6 +437,9 @@ label{display:block;font-size:11.5px;letter-spacing:.04em;text-transform:upperca
      a Sheets se omite silenciosamente y los datos solo quedan en este
      navegador (localStorage).
    ========================================================================= */
+/* =========================================================================
+   CREDENCIALES / CONFIGURACIÓN
+   ========================================================================= */
 const CREDENTIALS = {
   APIS_PERU_TOKEN: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImJydW5vY2hvcXVlMjAwNEBnbWFpbC5jb20ifQ.kIEGzq09BeeiYgdDmg73-AnQahsgT-EsSxmw6XxQ2rQ",
   APIS_PERU_DNI_ENDPOINT: "https://apiperu.dev/api/dni/",
@@ -444,7 +447,7 @@ const CREDENTIALS = {
   PRECIO_COCHERA_EXTRA: 10
 };
 
-// Esta es la función que busca el DNI automáticamente
+// Esta es la función que busca el DNI automáticamente en APIs Perú
 async function buscarPorDNI(dni) {
   // 1. Verificamos que se haya configurado el Token
   if (!CREDENTIALS.APIS_PERU_TOKEN) {
@@ -496,6 +499,16 @@ async function buscarPorDNI(dni) {
     if (shimmer) shimmer.classList.add('hidden');
   }
 }
+
+/* ---- Búsqueda Express con APIs Perú al octavo dígito del DNI ---- */
+document.addEventListener('input', function(e){
+  if(e.target && e.target.id === 'ciDni'){
+    const val = e.target.value.replace(/\D/g, '');
+    if(val.length === 8){ 
+      buscarPorDNI(val); 
+    }
+  }
+});
 /* =========================================================================
    DATOS DEL HOSTAL (5 pisos)
    ========================================================================= */

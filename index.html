@@ -440,17 +440,33 @@ label{display:block;font-size:11.5px;letter-spacing:.04em;text-transform:upperca
 /* =========================================================================
    CREDENCIALES / CONFIGURACIÓN
    ========================================================================= */
-/* =========================================================================
-   CREDENCIALES / CONFIGURACIÓN
-   ========================================================================= */
 const CREDENTIALS = {
   APIS_PERU_TOKEN: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImJydW5vY2hvcXVlMjAwNEBnbWFpbC5jb20ifQ.kIEGzq09BeeiYgdDmg73-AnQahsgT-EsSxmw6XxQ2rQ",
   GOOGLE_SHEETS_WEBAPP_URL: "https://script.google.com/macros/s/AKfycbyoQrIzAa5qrtGYpbDIAUlB2iMEHvJdfyhTSy7NuhpspH8Bw8rhvw-GJl9kblEG2e-mGw/exec",
   PRECIO_COCHERA_EXTRA: 10
 };
 
-// Función que consulta a través de Google Apps Script (Bypass CORS)
-async function buscarPorDNI(dni) {
+// Función de respuesta global que ejecutará el JSONP
+window.procesarRespuestaDNI = function(resultado) {
+  const shimmer = document.getElementById('ciShimmer');
+  const nombreInput = document.getElementById('ciNombre');
+
+  if (shimmer) shimmer.classList.add('hidden');
+
+  // Limpiar el tag script creado
+  const oldScript = document.getElementById('jsonpDniScript');
+  if (oldScript) oldScript.remove();
+
+  if (resultado && resultado.success && resultado.nombre) {
+    if (nombreInput) nombreInput.value = resultado.nombre;
+    showToast("¡Cliente encontrado: " + resultado.nombre + "!", "ok");
+  } else {
+    showToast(resultado.message || "No se encontró información para este DNI.", "err");
+  }
+};
+
+// Búsqueda por DNI mediante JSONP (Inmune a CORS)
+function buscarPorDNI(dni) {
   if (dni.length !== 8) {
     showToast("El DNI debe tener 8 números.", "err");
     return;
@@ -462,34 +478,23 @@ async function buscarPorDNI(dni) {
   }
 
   const shimmer = document.getElementById('ciShimmer');
-  const nombreInput = document.getElementById('ciNombre');
-
   if (shimmer) shimmer.classList.remove('hidden');
 
-  try {
-    // Enviamos la consulta a Google Apps Script para saltar el bloqueo CORS
-    const url = `${CREDENTIALS.GOOGLE_SHEETS_WEBAPP_URL}?action=buscarDni&dni=${dni}&token=${encodeURIComponent(CREDENTIALS.APIS_PERU_TOKEN)}`;
-    
-    // Petición GET explícita con manejo de redirección
-    const respuesta = await fetch(url, {
-      method: 'GET',
-      redirect: 'follow'
-    });
+  // Eliminar script previo si existiera
+  const oldScript = document.getElementById('jsonpDniScript');
+  if (oldScript) oldScript.remove();
 
-    const resultado = await respuesta.json();
-
-    if (resultado.success && resultado.nombre) {
-      if (nombreInput) nombreInput.value = resultado.nombre;
-      showToast("¡Cliente encontrado: " + resultado.nombre + "!", "ok");
-    } else {
-      showToast(resultado.message || "No se encontró información para este DNI.", "err");
-    }
-  } catch (error) {
-    console.error("Error al conectar con el servidor:", error);
-    showToast("No se pudo consultar el DNI automáticamente.", "err");
-  } finally {
+  // Crear tag script dinámico para bypass completo de CORS
+  const script = document.createElement('script');
+  script.id = 'jsonpDniScript';
+  script.src = `${CREDENTIALS.GOOGLE_SHEETS_WEBAPP_URL}?action=buscarDni&dni=${dni}&token=${encodeURIComponent(CREDENTIALS.APIS_PERU_TOKEN)}&callback=procesarRespuestaDNI`;
+  
+  script.onerror = function() {
     if (shimmer) shimmer.classList.add('hidden');
-  }
+    showToast("Error de conexión al consultar el DNI.", "err");
+  };
+
+  document.body.appendChild(script);
 }
 
 /* ---- Búsqueda Express al octavo dígito ---- */

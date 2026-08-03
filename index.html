@@ -442,34 +442,32 @@ label{display:block;font-size:11.5px;letter-spacing:.04em;text-transform:upperca
    ========================================================================= */
 const CREDENTIALS = {
   APIS_PERU_TOKEN: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImJydW5vY2hvcXVlMjAwNEBnbWFpbC5jb20ifQ.kIEGzq09BeeiYgdDmg73-AnQahsgT-EsSxmw6XxQ2rQ",
-  APIS_PERU_DNI_ENDPOINT: "https://apiperu.dev/api/dni/",
+  APIS_PERU_DNI_ENDPOINT: "https://apisperu.com/api/dni/", // O https://apiperu.dev/api/dni/ según tu servidor activo
   GOOGLE_SHEETS_WEBAPP_URL: "https://script.google.com/macros/s/AKfycbxO7ITRg22se1vgisQAoFu2f14h6OTvGeXtEiibol1lQPwL56tNT-Dv0JUL9skYG7JwZQ/exec",
   PRECIO_COCHERA_EXTRA: 10
 };
 
-// Esta es la función que busca el DNI automáticamente en APIs Perú
+// Función para consultar DNI según la doc de APISPERU
 async function buscarPorDNI(dni) {
-  // 1. Verificamos que se haya configurado el Token
   if (!CREDENTIALS.APIS_PERU_TOKEN) {
     showToast("Falta configurar el Token de APIs Perú.", "err");
     return;
   }
 
-  // 2. Verificamos que el DNI tenga 8 dígitos
   if (dni.length !== 8) {
     showToast("El DNI debe tener 8 números.", "err");
     return;
   }
 
-  // Elementos de la interfaz de tu NEXUS PMS
   const shimmer = document.getElementById('ciShimmer');
   const nombreInput = document.getElementById('ciNombre');
 
   if (shimmer) shimmer.classList.remove('hidden');
 
   try {
-    // 3. Consultamos a APIs Perú
-    const respuesta = await fetch(`${CREDENTIALS.APIS_PERU_DNI_ENDPOINT}${dni}`, {
+    // Petición GET directa agregando el número al final de la URL
+    const url = `${CREDENTIALS.APIS_PERU_DNI_ENDPOINT}${dni}`;
+    const respuesta = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -477,30 +475,34 @@ async function buscarPorDNI(dni) {
       }
     });
 
+    if (!respuesta.ok) {
+      throw new Error(`Error HTTP: ${respuesta.status}`);
+    }
+
     const resultado = await respuesta.json();
 
-    // 4. Procesamos el resultado devuelto por la API
+    // APISPERU puede devolver 'data' o las propiedades directamente en la raíz
     const data = resultado.data || resultado;
     const nombres = data.nombres || data.nombre || '';
     const apPat = data.apellidoPaterno || '';
     const apMat = data.apellidoMaterno || '';
     const nombreCompleto = [nombres, apPat, apMat].filter(Boolean).join(' ').trim();
 
-    if (resultado.success || nombreCompleto) {
+    if (nombreCompleto) {
       if (nombreInput) nombreInput.value = nombreCompleto;
       showToast("¡Cliente encontrado: " + nombreCompleto + "!", "ok");
     } else {
-      showToast("No se encontró ninguna persona con ese DNI.", "err");
+      showToast("No se encontraron nombres asociados a ese DNI.", "err");
     }
   } catch (error) {
     console.error("Error al conectar con APIs Perú:", error);
-    showToast("Hubo un error de conexión al buscar el DNI.", "err");
+    showToast("Error de conexión al consultar DNI. Revisa la consola (F12).", "err");
   } finally {
     if (shimmer) shimmer.classList.add('hidden');
   }
 }
 
-/* ---- Búsqueda Express con APIs Perú al octavo dígito del DNI ---- */
+/* ---- Búsqueda Express al octavo dígito ---- */
 document.addEventListener('input', function(e){
   if(e.target && e.target.id === 'ciDni'){
     const val = e.target.value.replace(/\D/g, '');

@@ -439,26 +439,33 @@ label{display:block;font-size:11.5px;letter-spacing:.04em;text-transform:upperca
    ========================================================================= */
 const CREDENTIALS = {
   APIS_PERU_TOKEN: "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImJydW5vY2hvcXVlMjAwNEBnbWFpbC5jb20ifQ.kIEGzq09BeeiYgdDmg73-AnQahsgT-EsSxmw6XxQ2rQ",
-  APIS_PERU_DNI_ENDPOINT: "https://apiperu.dev/api/dni/", // ajustar según el proveedor real que utilice
-  GOOGLE_SHEETS_WEBAPP_URL: "https://script.google.com/macros/s/AKfycbxO7ITRg22se1vgisQAoFu2f14h6OTvGeXtEiibol1lQPwL56tNT-Dv0JUL9skYG7JwZQ/exec", // pegue aquí la URL /exec de su Apps Script Web App (ver nota arriba)
+  APIS_PERU_DNI_ENDPOINT: "https://apiperu.dev/api/dni/",
+  GOOGLE_SHEETS_WEBAPP_URL: "https://script.google.com/macros/s/AKfycbxO7ITRg22se1vgisQAoFu2f14h6OTvGeXtEiibol1lQPwL56tNT-Dv0JUL9skYG7JwZQ/exec",
   PRECIO_COCHERA_EXTRA: 10
 };
+
 // Esta es la función que busca el DNI automáticamente
 async function buscarPorDNI(dni) {
-  // 1. Verificamos que hayas puesto tu token en el objeto CREDENTIALS
-  if (!CREDENTIALS.APIS_PERU_TOKEN || CREDENTIALS.APIS_PERU_TOKEN === "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImJydW5vY2hvcXVlMjAwNEBnbWFpbC5jb20ifQ.kIEGzq09BeeiYgdDmg73-AnQahsgT-EsSxmw6XxQ2rQ") {
-    alert("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImJydW5vY2hvcXVlMjAwNEBnbWFpbC5jb20ifQ.kIEGzq09BeeiYgdDmg73-AnQahsgT-EsSxmw6XxQ2rQ");
+  // 1. Verificamos que se haya configurado el Token
+  if (!CREDENTIALS.APIS_PERU_TOKEN) {
+    showToast("Falta configurar el Token de APIs Perú.", "err");
     return;
   }
 
   // 2. Verificamos que el DNI tenga 8 dígitos
   if (dni.length !== 8) {
-    alert("El DNI debe tener 8 números.");
+    showToast("El DNI debe tener 8 números.", "err");
     return;
   }
 
+  // Elementos de la interfaz de tu NEXUS PMS
+  const shimmer = document.getElementById('ciShimmer');
+  const nombreInput = document.getElementById('ciNombre');
+
+  if (shimmer) shimmer.classList.remove('hidden');
+
   try {
-    // 3. Consultamos a APIs Perú pasando el DNI y el Token
+    // 3. Consultamos a APIs Perú
     const respuesta = await fetch(`${CREDENTIALS.APIS_PERU_DNI_ENDPOINT}${dni}`, {
       method: 'GET',
       headers: {
@@ -469,21 +476,24 @@ async function buscarPorDNI(dni) {
 
     const resultado = await respuesta.json();
 
-    // 4. Si la consulta fue exitosa (DNI encontrado en RENIEC)
-    if (resultado.success) {
-      // Juntamos nombres y apellidos
-      const nombreCompleto = `${resultado.data.nombres} ${resultado.data.apellidoPaterno} ${resultado.data.apellidoMaterno}`;
-      
-      // Buscamos la cajita de texto donde va el nombre y le asignamos el valor
-      document.getElementById('inputNombreCliente').value = nombreCompleto;
-      
-      alert("¡Cliente encontrado: " + nombreCompleto + "!");
+    // 4. Procesamos el resultado devuelto por la API
+    const data = resultado.data || resultado;
+    const nombres = data.nombres || data.nombre || '';
+    const apPat = data.apellidoPaterno || '';
+    const apMat = data.apellidoMaterno || '';
+    const nombreCompleto = [nombres, apPat, apMat].filter(Boolean).join(' ').trim();
+
+    if (resultado.success || nombreCompleto) {
+      if (nombreInput) nombreInput.value = nombreCompleto;
+      showToast("¡Cliente encontrado: " + nombreCompleto + "!", "ok");
     } else {
-      alert("No se encontró ninguna persona con ese DNI.");
+      showToast("No se encontró ninguna persona con ese DNI.", "err");
     }
   } catch (error) {
     console.error("Error al conectar con APIs Perú:", error);
-    alert("Hubo un error de conexión al buscar el DNI.");
+    showToast("Hubo un error de conexión al buscar el DNI.", "err");
+  } finally {
+    if (shimmer) shimmer.classList.add('hidden');
   }
 }
 /* =========================================================================
